@@ -1,0 +1,8 @@
+parameters:
+  image: "Debian 13 Trixie"
+  flavor: "vol.normal"
+  network: "Red de josedom"
+  key_name: "jdmr"
+  public_network: "ext-net"
+  root_volume_size: 20        # volumen raíz de 20 GB
+  data_volume_size: 10      

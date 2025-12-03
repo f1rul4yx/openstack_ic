@@ -1,0 +1,5 @@
+parameters:
+  image: "Debian 13 Trixie"
+  flavor: "m1.normal"
+  key_name: "jdmr"
+  public_network: "ext-net"

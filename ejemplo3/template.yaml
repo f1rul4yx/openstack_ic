@@ -1,0 +1,127 @@
+heat_template_version: 2018-08-31
+
+description: >
+  Crear una red 192.168.10.0/24, un router conectado a la red pública,
+  dos instancias en la red interna y una de ellas con IP flotante.
+
+parameters:
+  image:
+    type: string
+    description: "Imagen para las instancias"
+  flavor:
+    type: string
+    description: "Flavor de las máquinas"
+  key_name:
+    type: string
+    description: "Par de claves SSH"
+  public_network:
+    type: string
+    description: "Nombre de la red pública"
+
+resources:
+
+  # ---------------- RED Y SUBRED ----------------
+  net_asir:
+    type: OS::Neutron::Net
+    properties:
+      name: asir-net
+
+  subnet_asir:
+    type: OS::Neutron::Subnet
+    properties:
+      name: asir-subnet
+      network_id: { get_resource: net_asir }
+      cidr: 192.168.10.0/24
+      ip_version: 4
+      gateway_ip: 192.168.10.1
+      dns_nameservers:
+        - 8.8.8.8
+
+  # ---------------- ROUTER ---------------------
+  router_asir:
+    type: OS::Neutron::Router
+    properties:
+      name: asir-router
+      external_gateway_info:
+        network: { get_param: public_network }
+
+  router_subnet_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router: { get_resource: router_asir }
+      subnet: { get_resource: subnet_asir }
+
+  # ---------------- SECURITY GROUP -------------
+  ssh_sg:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: "Permite tráfico SSH"
+      name: ssh-sg
+      rules:
+        - protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+          remote_ip_prefix: 0.0.0.0/0
+
+  # ---------------- PUERTOS --------------------
+  port_vm1:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: net_asir }
+      security_groups:
+        - { get_resource: ssh_sg }
+
+  port_vm2:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: net_asir }
+      security_groups:
+        - { get_resource: ssh_sg }
+
+  # ---------------- INSTANCIA 1 (con Floating IP) ----------------
+  vm1:
+    type: OS::Nova::Server
+    properties:
+      name: maquina-1
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: port_vm1 }
+
+  floating_ip_vm1:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_network }
+
+  floating_ip_assoc_vm1:
+    type: OS::Neutron::FloatingIPAssociation
+    depends_on:
+      - router_subnet_interface     # <<< clave para evitar el error
+    properties:
+      floatingip_id: { get_resource: floating_ip_vm1 }
+      port_id: { get_resource: port_vm1 }
+
+  # ---------------- INSTANCIA 2 (sin Floating IP) ---------------
+  vm2:
+    type: OS::Nova::Server
+    properties:
+      name: maquina-2
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: port_vm2 }
+
+outputs:
+  vm1_floating_ip:
+    description: "IP flotante asignada a la máquina 1"
+    value: { get_attr: [floating_ip_vm1, floating_ip_address] }
+
+  vm1_fixed_ip:
+    description: "IP interna de la máquina 1"
+    value: { get_attr: [port_vm1, fixed_ips, 0, ip_address] }
+
+  vm2_fixed_ip:
+    description: "IP interna de la máquina 2"
+    value: { get_attr: [port_vm2, fixed_ips, 0, ip_address] }
