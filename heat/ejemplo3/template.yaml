@@ -5,9 +5,12 @@ description: >
   dos instancias en la red interna y una de ellas con IP flotante.
 
 parameters:
-  image:
+  image_vm1:
     type: string
-    description: "Imagen para las instancias"
+    description: "Imagen para la instancia 1"
+  image_vm2:
+    type: string
+    description: "Imagen para la instancia 2"
   flavor:
     type: string
     description: "Flavor de las máquinas"
@@ -83,7 +86,7 @@ resources:
     type: OS::Nova::Server
     properties:
       name: maquina-1
-      image: { get_param: image }
+      image: { get_param: image_vm1 }
       flavor: { get_param: flavor }
       key_name: { get_param: key_name }
       networks:
@@ -107,7 +110,7 @@ resources:
     type: OS::Nova::Server
     properties:
       name: maquina-2
-      image: { get_param: image }
+      image: { get_param: image_vm2 }
       flavor: { get_param: flavor }
       key_name: { get_param: key_name }
       networks:

@@ -1,5 +1,6 @@
 parameters:
-  image: "Debian 13 Trixie"
+  image_vm1: "Debian 13 Trixie"
+  image_vm2: "Rocky Linux 10"
   flavor: "m1.normal"
-  key_name: "jdmr"
+  key_name: "f1rul4yx"
   public_network: "ext-net"
